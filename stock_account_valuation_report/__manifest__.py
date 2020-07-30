@@ -5,13 +5,13 @@
 
 {
     "name": "Stock Account Valuation Report",
-    "version": "12.0.1.0.0",
+    "version": "13.0.1.0.0",
     "summary": "Improves logic of the Inventory Valuation Report",
     "author": "Eficent, Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/stock-logistics-reporting",
     "category": "Warehouse Management",
     "depends": ["stock_account"],
     "license": "AGPL-3",
-    "data": ["views/product_product_views.xml"],
+    "data": ["views/stock_valuation_layer_views.xml"],
     "installable": True,
 }
