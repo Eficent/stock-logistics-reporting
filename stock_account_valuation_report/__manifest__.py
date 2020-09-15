@@ -12,6 +12,6 @@
     "category": "Warehouse Management",
     "depends": ["stock_account"],
     "license": "AGPL-3",
-    "data": ["views/stock_valuation_layer_views.xml"],
+    "data": ["views/stock_valuation_layer_views.xml", "views/account_move_line_view.xml"],
     "installable": True,
 }
