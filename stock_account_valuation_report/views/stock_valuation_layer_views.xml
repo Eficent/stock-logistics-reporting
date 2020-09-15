@@ -7,6 +7,7 @@
         <field name="inherit_id" ref="stock_account.stock_valuation_layer_tree"/>
         <field name="arch" type="xml">
             <field name="company_id" position="before">
+                <field name="account_move_line_id" invisible="1"/>
                 <field name="account_qty_at_date"/>
                 <field name="account_value" sum="Total Acc Value"/>
             </field>
@@ -19,6 +20,7 @@
         <field name="inherit_id" ref="stock_account.stock_valuation_layer_form"/>
         <field name="arch" type="xml">
             <field name="value" position="after">
+                <field name="account_move_line_id" invisible="1"/>
                 <field name="account_qty_at_date"/>
                 <field name="account_value" sum="Total Acc Value"/>
             </field>

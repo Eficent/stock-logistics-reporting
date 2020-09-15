@@ -17,6 +17,7 @@ class StockValuationLayer(models.Model):
     account_qty_at_date = fields.Float(
         "Accounting Quantity", compute="_compute_inventory_value", store=True
     )
+    account_move_line_id = fields.Many2one('account.move.line', index=True)
 
     def init(self):
         super().init()
