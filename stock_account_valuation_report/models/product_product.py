@@ -3,7 +3,7 @@
 # Copyright 2018 Aleph Objects, Inc.
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-from odoo import fields, models, _
+from odoo import api, fields, models, _
 
 
 class ProductProduct(models.Model):
@@ -94,10 +94,10 @@ class ProductProduct(models.Model):
                     price_used = history.get(product.id, 0)
                 product.stock_value = price_used * qty_available
                 product.qty_at_date = qty_available
-            elif product.cost_method == 'fifo':
+            elif product.cost_method == 'real':
                 if to_date:
                     if product.product_tmpl_id.valuation == 'manual_periodic':
-                        product.stock_value = sum(moves.mapped('value'))
+                        product.stock_value = sum(moves.mapped('unit_price'))
                         product.qty_at_date = qty_available
                         product.stock_fifo_manual_move_ids = stock_move.browse(
                             moves.ids)
@@ -110,7 +110,7 @@ class ProductProduct(models.Model):
     def action_view_amls(self):
         self.ensure_one()
         to_date = self.env.context.get('to_date')
-        tree_view_ref = self.env.ref('stock_account.view_stock_account_aml')
+        tree_view_ref = self.env.ref('account.view_move_line_tree')
         form_view_ref = self.env.ref('account.view_move_line_form')
         action = {'name': _('Accounting Valuation at date'),
                   'type': 'ir.actions.act_window', 'view_type': 'form',
@@ -126,7 +126,7 @@ class ProductProduct(models.Model):
         self.ensure_one()
         to_date = self.env.context.get('to_date')
         tree_view_ref = self.env.ref(
-            'stock_account.view_move_tree_valuation_at_date')
+            'stock.view_move_tree')
         form_view_ref = self.env.ref('stock.view_move_form')
         action = {'name': _('Inventory Valuation'),
                   'type': 'ir.actions.act_window', 'view_type': 'form',
@@ -137,3 +137,26 @@ class ProductProduct(models.Model):
                   'views': [(tree_view_ref.id, 'tree'),
                             (form_view_ref.id, 'form')]}
         return action
+
+
+    def action_valuation_at_date_details(self):
+        """ Returns an action with either a list view of all the valued stock moves of `self` if the
+        valuation is set as manual or a list view of all the account move lines if the valuation is
+        set as automated.
+        """
+        self.ensure_one()
+        to_date = self.env.context.get('to_date')
+        action = {
+            'name': _('Valuation at date'),
+            'type': 'ir.actions.act_window',
+            'view_type': 'form',
+            'view_mode': 'tree,form',
+            'context': self.env.context,
+        }
+        action['res_model'] = 'stock.move'
+        action['domain'] = [('id', 'in', self.with_context(to_date=to_date).stock_fifo_manual_move_ids.ids)]
+        tree_view_ref = self.env.ref('stock.view_move_tree')
+        form_view_ref = self.env.ref('stock.view_move_form')
+        action['views'] = [(tree_view_ref.id, 'tree'), (form_view_ref.id, 'form')]
+        return action
+
