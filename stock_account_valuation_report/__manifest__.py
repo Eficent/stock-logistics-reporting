@@ -13,7 +13,7 @@
     "depends": ["stock_account"],
     "license": "AGPL-3",
     "data": [
-        "views/product_product_views.xml",
+        "views/stock_history_views.xml",
     ],
     'installable': True,
 }
