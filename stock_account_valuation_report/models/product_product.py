@@ -25,7 +25,6 @@ class ProductProduct(models.Model):
     def _compute_inventory_value(self):
         stock_move = self.env['stock.move']
         self.env['account.move.line'].check_access_rights('read')
-        to_date = self.env.context.get('to_date', False)
         location = self.env.context.get('location', False)
         accounting_values = {}
         if not location:
@@ -38,36 +37,15 @@ class ProductProduct(models.Model):
                 AND aml.company_id=%%s %s
                 GROUP BY aml.product_id, aml.account_id"""
             params = (tuple(self._ids, ), self.env.user.company_id.id)
-            if to_date:
-                # pylint: disable=sql-injection
-                query = query % ('AND aml.date <= %s',)
-                params = params + (to_date,)
-            else:
-                query = query % ('',)
+            query = query % ('',)
             self.env.cr.execute(query, params=params)
             res = self.env.cr.fetchall()
             for row in res:
                 accounting_values[(row[0], row[1])] = (row[2], row[3],
                                                        list(row[4]))
         stock_move_domain = [
-            ('product_id', 'in', self._ids),
-            ('date', '<=', to_date)] + stock_move._get_all_base_domain()
+            ('product_id', 'in', self._ids)] + stock_move._get_all_base_domain()
         moves = stock_move.search(stock_move_domain)
-        history = {}
-        if to_date:
-            query = """
-                SELECT DISTINCT ON ("product_id") product_id, cost
-                FROM   "product_price_history"
-                WHERE datetime <= %s::date
-                AND product_id IN %s
-                ORDER  BY "product_id", "datetime" DESC NULLS LAST
-                """
-            args = (to_date, tuple(self._ids))
-            self.env.cr.execute(query, args)
-            for row in self.env.cr.dictfetchall():
-                history.update({
-                    row['product_id']: row['cost']
-                })
         quantities_dict = self._compute_quantities_dict(
             self._context.get('lot_id'), self._context.get('owner_id'),
             self._context.get('package_id'), self._context.get('from_date'),
@@ -77,7 +55,12 @@ class ProductProduct(models.Model):
             # Retrieve the values from accounting
             # We cannot provide location-specific accounting valuation,
             # so better, leave the data empty in that case:
+            print(product.name)
+            print(product.valuation)
+            print(product.cost_method)
+            print(product.product_tmpl_id.valuation)
             if product.valuation == 'real_time' and not location:
+                print('option1')
                 valuation_account_id = \
                     product.categ_id.property_stock_valuation_account_id.id
                 value, quantity, aml_ids = accounting_values.get(
@@ -86,26 +69,26 @@ class ProductProduct(models.Model):
                 product.account_qty_at_date = quantity
                 product.stock_fifo_real_time_aml_ids = \
                     self.env['account.move.line'].browse(aml_ids)
+                # considering using quants
+                product.stock_fifo_manual_move_ids = stock_move.browse(
+                    moves.ids)
+                sv = 0.0
+                for mv in moves:
+                    sv = mv.price_unit * mv.product_uom_qty
+                product.stock_value = sv
+                product.qty_at_date = qty_available
             # Retrieve the values from inventory
             if product.cost_method in ['standard', 'average']:
-
+                print('option2')
                 price_used = product.standard_price
-                if to_date:
-                    price_used = history.get(product.id, 0)
                 product.stock_value = price_used * qty_available
                 product.qty_at_date = qty_available
-            elif product.cost_method == 'real':
-                if to_date:
-                    if product.product_tmpl_id.valuation == 'manual_periodic':
-                        product.stock_value = sum(moves.mapped('unit_price'))
-                        product.qty_at_date = qty_available
-                        product.stock_fifo_manual_move_ids = stock_move.browse(
-                            moves.ids)
-                else:
-                    product.stock_value, moves = \
-                        product._sum_remaining_values()
-                    product.qty_at_date = qty_available
-                    product.stock_fifo_manual_move_ids = moves
+            elif product.cost_method == 'real' and product.product_tmpl_id.valuation == 'manual_periodic':
+                print('option3')
+                product.stock_value = sum(moves.mapped('price_unit'))
+                product.qty_at_date = qty_available
+                product.stock_fifo_manual_move_ids = stock_move.browse(
+                    moves.ids)
 
     def action_view_amls(self):
         self.ensure_one()
@@ -137,26 +120,3 @@ class ProductProduct(models.Model):
                   'views': [(tree_view_ref.id, 'tree'),
                             (form_view_ref.id, 'form')]}
         return action
-
-
-    def action_valuation_at_date_details(self):
-        """ Returns an action with either a list view of all the valued stock moves of `self` if the
-        valuation is set as manual or a list view of all the account move lines if the valuation is
-        set as automated.
-        """
-        self.ensure_one()
-        to_date = self.env.context.get('to_date')
-        action = {
-            'name': _('Valuation at date'),
-            'type': 'ir.actions.act_window',
-            'view_type': 'form',
-            'view_mode': 'tree,form',
-            'context': self.env.context,
-        }
-        action['res_model'] = 'stock.move'
-        action['domain'] = [('id', 'in', self.with_context(to_date=to_date).stock_fifo_manual_move_ids.ids)]
-        tree_view_ref = self.env.ref('stock.view_move_tree')
-        form_view_ref = self.env.ref('stock.view_move_form')
-        action['views'] = [(tree_view_ref.id, 'tree'), (form_view_ref.id, 'form')]
-        return action
-

@@ -10,7 +10,6 @@
                 <field name="uom_id" groups="product.group_uom"/>
                 <field name="currency_id" invisible="1"/>
                 <field name="stock_value" sum="Stock Valuation" widget="monetary" options="{'currency_field': 'cost_currency_id'}"/>
-                <button name="action_valuation_at_date_details" type="object" icon="fa-info-circle" attrs="{'invisible': [('valuation', '!=', 'real_time')]}" />
                 <button name="action_view_stock_moves"
                         type="object" icon="fa-info-circle"
                         attrs="{'invisible': [('cost_method', '!=', 'real')]}" />
@@ -39,7 +38,7 @@
         <field name="help">This analysis gives you a fast overview on the current stock level of your products and their current inventory value.</field>
     </record>
 
-    <menuitem id="menu_inventory_valuation" name="Inventory Valuation Dual"
+    <menuitem id="menu_inventory_valuation" name="Dual Inventory Valuation"
      parent="stock.menu_warehouse_report" sequence="99" action="open_inventory_valuation"/>
 
 </odoo>
